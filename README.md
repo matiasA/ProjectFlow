@@ -1,7 +1,5 @@
 # ProjectFlow
 
-![ProjectFlow Logo](https://projectflow.uno/logo.png)
-
 > Organiza, gestiona y potencia tus conversaciones con IA.
 
 ## 🚀 Visión General

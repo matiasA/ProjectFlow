@@ -21,14 +21,33 @@ export async function POST(req: NextRequest) {
 
     let response;
     
+    // Verificar si el proveedor está configurado correctamente
     switch (provider) {
       case 'openai':
+        if (!process.env.OPENAI_API_KEY) {
+          return NextResponse.json(
+            { error: 'Clave de API de OpenAI no configurada en variables de entorno' },
+            { status: 400 }
+          );
+        }
         response = await fetchFromOpenAI(messages, model, temperature, max_tokens);
         break;
       case 'anthropic':
+        if (!process.env.ANTHROPIC_API_KEY) {
+          return NextResponse.json(
+            { error: 'Clave de API de Anthropic no configurada en variables de entorno' },
+            { status: 400 }
+          );
+        }
         response = await fetchFromAnthropic(messages, model, temperature, max_tokens);
         break;
       case 'mistral':
+        if (!process.env.MISTRAL_API_KEY) {
+          return NextResponse.json(
+            { error: 'Clave de API de Mistral no configurada en variables de entorno' },
+            { status: 400 }
+          );
+        }
         response = await fetchFromMistral(messages, model, temperature, max_tokens);
         break;
       case 'lmstudio':
@@ -166,23 +185,28 @@ async function fetchFromLMStudio(
   // LMStudio utiliza la API compatible con OpenAI
   const endpoint = process.env.LMSTUDIO_API_ENDPOINT || 'http://localhost:1234/v1';
   
-  const response = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model, // En LMStudio esto puede ser ignorado ya que usa el modelo cargado
-      messages,
-      temperature,
-      max_tokens
-    } as OpenAIRequest),
-  });
+  try {
+    const response = await fetch(`${endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model, // En LMStudio esto puede ser ignorado ya que usa el modelo cargado
+        messages,
+        temperature,
+        max_tokens
+      } as OpenAIRequest),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Error en la API de LMStudio');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Error en la API de LMStudio');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('Error al conectar con LMStudio:', error);
+    throw new Error(`Error al conectar con LMStudio: ${error.message}`);
   }
-
-  return response.json();
-} 
+}

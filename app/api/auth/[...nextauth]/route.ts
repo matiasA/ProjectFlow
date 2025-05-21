@@ -5,6 +5,7 @@ import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -26,16 +27,43 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // En un entorno real, implementarías verificación de contraseñas aquí
-        // Este es un ejemplo simple para desarrollo
-        if (credentials?.email === "user@example.com" && credentials?.password === "password") {
-          return {
-            id: "1",
-            name: "Demo User",
-            email: "user@example.com",
-          };
+        if (!credentials?.email || !credentials?.password) {
+          return null;
         }
-        return null;
+        
+        // Buscar el usuario por email
+        const user = await prisma.user.findUnique({
+          where: {
+            email: credentials.email,
+          },
+        });
+        
+        // Si no existe o no tiene contraseña, usar la verificación simple para desarrollo
+        if (!user || !user.password) {
+          // Verificación simple para usuario de prueba (solo para desarrollo)
+          if (credentials.email === "user@example.com" && credentials.password === "password") {
+            return {
+              id: "1",
+              name: "Demo User",
+              email: "user@example.com",
+            };
+          }
+          return null;
+        }
+        
+        // Verificar la contraseña con bcrypt
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+        
+        if (!isPasswordValid) {
+          return null;
+        }
+        
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        };
       }
     }),
   ],

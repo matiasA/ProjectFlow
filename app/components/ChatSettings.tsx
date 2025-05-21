@@ -15,11 +15,11 @@ export default function ChatSettings({
   isOpen,
   onClose,
   chatId,
-  initialProvider = "openai",
+  initialProvider = "lmstudio",
   onSave,
 }: ChatSettingsProps) {
   const [provider, setProvider] = useState(initialProvider);
-  const [model, setModel] = useState("gpt-3.5-turbo");
+  const [model, setModel] = useState("local-model");
   const [temperature, setTemperature] = useState(0.7);
 
   // Modelos disponibles por proveedor
@@ -153,4 +153,4 @@ export default function ChatSettings({
       </div>
     </div>
   );
-} 
+}

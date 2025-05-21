@@ -25,8 +25,8 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
-    provider: "openai",
-    model: "gpt-3.5-turbo",
+    provider: "lmstudio",
+    model: "local-model",
     temperature: 0.7
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -237,4 +237,4 @@ export default function ChatPage() {
       />
     </AppLayout>
   );
-} 
+}

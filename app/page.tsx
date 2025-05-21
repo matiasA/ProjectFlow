@@ -2,14 +2,52 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AppLayout from "./components/AppLayout";
 import { PlusIcon, MessageSquareIcon, FolderIcon } from "lucide-react";
 import Link from "next/link";
 
+interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count: {
+    folders: number;
+    chats: number;
+  }
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (session?.user) {
+        try {
+          setIsLoading(true);
+          const response = await fetch('/api/projects');
+          
+          if (response.ok) {
+            const data = await response.json();
+            setProjects(data);
+          }
+        } catch (error) {
+          console.error("Error al cargar proyectos:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    if (status === "authenticated") {
+      fetchProjects();
+    }
+  }, [session, status]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -28,6 +66,20 @@ export default function Home() {
   if (status === "unauthenticated" || !session) {
     return null;
   }
+  
+  // Formatear la fecha a una cadena legible
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return "hace menos de un minuto";
+    if (diffInSeconds < 3600) return `hace ${Math.floor(diffInSeconds / 60)} minutos`;
+    if (diffInSeconds < 86400) return `hace ${Math.floor(diffInSeconds / 3600)} horas`;
+    if (diffInSeconds < 604800) return `hace ${Math.floor(diffInSeconds / 86400)} días`;
+    
+    return date.toLocaleDateString();
+  };
 
   return (
     <AppLayout>
@@ -51,7 +103,7 @@ export default function Home() {
             </div>
             <div>
               <h2 className="font-semibold text-lg">Total de proyectos</h2>
-              <p className="text-3xl font-bold">3</p>
+              <p className="text-3xl font-bold">{projects.length}</p>
             </div>
           </div>
 
@@ -75,25 +127,36 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <h3 className="font-semibold mb-2">Proyecto 1</h3>
-              <p className="text-gray-500 text-sm mb-4">3 carpetas · 8 chats</p>
-              <div className="text-xs text-gray-400">Actualizado hace 2 horas</div>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 bg-blue-600 rounded-full animate-bounce"></div>
             </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <h3 className="font-semibold mb-2">Proyecto 2</h3>
-              <p className="text-gray-500 text-sm mb-4">1 carpeta · 3 chats</p>
-              <div className="text-xs text-gray-400">Actualizado hace 1 día</div>
+          ) : projects.length === 0 ? (
+            <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+              <h3 className="text-lg font-medium mb-2">No hay proyectos todavía</h3>
+              <p className="text-gray-500 mb-4">Comienza creando tu primer proyecto</p>
+              <Link 
+                href="/projects/new" 
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                <span>Crear proyecto</span>
+              </Link>
             </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <h3 className="font-semibold mb-2">Proyecto 3</h3>
-              <p className="text-gray-500 text-sm mb-4">2 carpetas · 1 chat</p>
-              <div className="text-xs text-gray-400">Actualizado hace 3 días</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map(project => (
+                <div key={project.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <h3 className="font-semibold mb-2">{project.name}</h3>
+                  <p className="text-gray-500 text-sm mb-4">
+                    {project._count.folders} {project._count.folders === 1 ? 'carpeta' : 'carpetas'} · 
+                    {' '}{project._count.chats} {project._count.chats === 1 ? 'chat' : 'chats'}
+                  </p>
+                  <div className="text-xs text-gray-400">Actualizado {formatDate(project.updatedAt)}</div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
 
         <div>

@@ -11,7 +11,7 @@ ProjectFlow es un gestor de proyectos especializado para conversaciones con inte
 ## ✨ Características Principales
 
 - **🗂️ Organización Jerárquica**: Sistema intuitivo de Proyectos > Carpetas > Chats
-- **🔄 Múltiples Proveedores de IA**: Compatibilidad con OpenAI, Anthropic, Mistral y más
+- **🔄 Múltiples Proveedores de IA**: Compatibilidad con OpenAI, Anthropic, Mistral, LMStudio y más
 - **🧠 Gestión de Contexto**: Personaliza y preserva el contexto para cada conversación
 - **📚 Historial Inteligente**: Almacenamiento y búsqueda en tu historial completo de conversaciones
 - **💻 Interfaz Moderna**: UI intuitiva, responsive y centrada en la experiencia de usuario
@@ -67,6 +67,7 @@ GITHUB_SECRET=""
 OPENAI_API_KEY=""
 ANTHROPIC_API_KEY=""
 MISTRAL_API_KEY=""
+LMSTUDIO_API_ENDPOINT="http://localhost:1234/v1"
 ```
 
 ### 4. Inicializa la base de datos:
@@ -141,7 +142,7 @@ La única condición es que debes incluir una copia de la licencia en cualquier 
 
 ¡Las contribuciones son bienvenidas! Hay varias formas de contribuir a ProjectFlow:
 
-### 🐛 Reportar Problemas
+### �� Reportar Problemas
 - Usa el [sistema de issues](https://github.com/tu-usuario/projectflow/issues)
 - Incluye pasos para reproducir el problema
 - Describe el comportamiento esperado vs el actual

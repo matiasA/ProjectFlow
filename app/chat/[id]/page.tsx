@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import AppLayout from "../../components/AppLayout";
+import ChatSettings from "../../components/ChatSettings";
 import { SendIcon, PaperclipIcon, SettingsIcon } from "lucide-react";
 
 interface Message {
@@ -12,10 +13,22 @@ interface Message {
   createdAt: Date;
 }
 
+interface ChatSettings {
+  provider: string;
+  model: string;
+  temperature: number;
+}
+
 export default function ChatPage() {
   const { id } = useParams();
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [chatSettings, setChatSettings] = useState<ChatSettings>({
+    provider: "openai",
+    model: "gpt-3.5-turbo",
+    temperature: 0.7
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Demo: Datos simulados
@@ -77,18 +90,58 @@ export default function ChatPage() {
     setInputValue("");
     setIsLoading(true);
     
-    // Simular respuesta de IA después de un delay
-    setTimeout(() => {
+    try {
+      // En una implementación real, conectaríamos con la API del LLM
+      const response = await fetch('/api/llm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: chatSettings.provider,
+          model: chatSettings.model,
+          temperature: chatSettings.temperature,
+          messages: messages.concat(userMessage).map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al conectar con el servicio de IA');
+      }
+      
+      const data = await response.json();
+      
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
-        content: "Esta es una respuesta simulada. En una implementación real, aquí se conectaría con la API del modelo de lenguaje seleccionado.",
+        content: data.choices[0].message.content,
         role: "assistant",
         createdAt: new Date()
       };
       
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      // Manejo de errores
+      console.error('Error:', error);
+      
+      // Mensaje de error como respuesta
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        content: "Lo siento, ha ocurrido un error al procesar tu solicitud. Por favor, intenta de nuevo más tarde.",
+        role: "assistant",
+        createdAt: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
+  };
+
+  const handleSaveSettings = (settings: ChatSettings) => {
+    setChatSettings(settings);
   };
 
   return (
@@ -97,9 +150,18 @@ export default function ChatPage() {
         <div className="border-b border-gray-200 p-4">
           <div className="flex justify-between items-center">
             <h1 className="text-xl font-semibold">Chat #{id}</h1>
-            <button className="p-2 rounded-full hover:bg-gray-100">
-              <SettingsIcon className="h-5 w-5 text-gray-500" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500">
+                {chatSettings.provider === 'lmstudio' ? 'LM Studio (Local)' : 
+                  chatSettings.provider.charAt(0).toUpperCase() + chatSettings.provider.slice(1)}
+              </span>
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="p-2 rounded-full hover:bg-gray-100"
+              >
+                <SettingsIcon className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
           </div>
         </div>
         
@@ -165,6 +227,14 @@ export default function ChatPage() {
           </form>
         </div>
       </div>
+
+      <ChatSettings 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        chatId={id as string}
+        initialProvider={chatSettings.provider}
+        onSave={handleSaveSettings}
+      />
     </AppLayout>
   );
 } 

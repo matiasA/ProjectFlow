@@ -1,36 +1,161 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IA Chat Projects
 
-## Getting Started
+Gestor de proyectos de chats con IA para organizar y contextualizar de manera óptima conversaciones con modelos de lenguaje.
 
-First, run the development server:
+## Características
+
+- **Organización jerárquica**: Proyectos > Carpetas > Chats
+- **Múltiples proveedores de IA**: Compatible con OpenAI, Anthropic, Mistral y más
+- **Gestión de contexto**: Personaliza el contexto para cada chat
+- **Historial completo**: Guarda y busca en todo tu historial de conversaciones
+- **Interfaz moderna**: UI intuitiva y responsive
+
+## Tecnologías
+
+- **Frontend**: Next.js, React, TailwindCSS
+- **Backend**: API Routes de Next.js
+- **Base de datos**: SQLite (Prisma ORM)
+- **Autenticación**: NextAuth.js
+
+## Requisitos previos
+
+- Node.js 18.0 o superior
+- npm o yarn
+
+## Instalación
+
+1. Clona el repositorio:
+
+```bash
+git clone https://github.com/tu-usuario/ia-chat-projects.git
+cd ia-chat-projects
+```
+
+2. Instala las dependencias:
+
+```bash
+npm install
+# o
+yarn install
+```
+
+3. Configura las variables de entorno:
+
+Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
+
+```
+# Base de datos
+DATABASE_URL="file:./dev.db"
+
+# NextAuth
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="tu-secreto-aqui"
+
+# Providers de OAuth (opcional)
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+GITHUB_ID=""
+GITHUB_SECRET=""
+
+# LLM Providers
+OPENAI_API_KEY=""
+ANTHROPIC_API_KEY=""
+MISTRAL_API_KEY=""
+```
+
+4. Inicializa la base de datos:
+
+```bash
+npx prisma migrate dev
+```
+
+5. Inicia el servidor de desarrollo:
 
 ```bash
 npm run dev
-# or
+# o
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Uso
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Autenticación
 
-## Learn More
+Para el desarrollo, puedes usar las credenciales de prueba:
+- Email: user@example.com
+- Password: password
 
-To learn more about Next.js, take a look at the following resources:
+### Crear un proyecto nuevo
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Inicia sesión en la aplicación
+2. Haz clic en "Nuevo proyecto" en el dashboard
+3. Asigna un nombre y descripción opcional
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Crear un chat nuevo
 
-## Deploy on Vercel
+1. Haz clic en "Nuevo chat" en la barra lateral
+2. Selecciona el proyecto y carpeta (opcional)
+3. Configura el proveedor de IA y el contexto (opcional)
+4. ¡Comienza a chatear!
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Estructura del proyecto
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+ia-chat-projects/
+├── app/                # Directorio principal de Next.js App Router
+│   ├── api/            # API Routes
+│   ├── auth/           # Páginas de autenticación
+│   ├── chat/           # Páginas de chat
+│   ├── components/     # Componentes reutilizables
+│   ├── contexts/       # Contextos de React
+│   └── ...
+├── prisma/             # Esquema y migraciones de Prisma
+├── public/             # Archivos estáticos
+└── ...
+```
+
+## Licencia
+
+ProjectFlow es software libre y de código abierto, licenciado bajo la [Licencia Apache 2.0](LICENSE).
+
+### ¿Qué significa esto para ti?
+
+- ✅ Puedes usar ProjectFlow libremente para cualquier propósito
+- ✅ Puedes modificar el código fuente
+- ✅ Puedes distribuir el software
+- ✅ Puedes usar el software comercialmente
+- ✅ Puedes patentar tus modificaciones
+
+La única condición es que debes incluir una copia de la licencia en cualquier distribución del software.
+
+## Contribuir
+
+¡Las contribuciones son bienvenidas! Hay varias formas de contribuir a ProjectFlow:
+
+### Reportar problemas
+- Usa el [sistema de issues](https://github.com/tu-usuario/projectflow/issues)
+- Incluye pasos para reproducir el problema
+- Describe el comportamiento esperado vs el actual
+
+### Enviar mejoras
+1. Haz fork del repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Haz commit de tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+### Guía de desarrollo
+1. Asegúrate de tener Node.js 18.0+ instalado
+2. Instala las dependencias: `npm install`
+3. Ejecuta los tests: `npm test`
+4. Sigue las [guías de estilo de código](CONTRIBUTING.md)
+
+### Código de conducta
+Por favor, lee nuestro [Código de Conducta](CODE_OF_CONDUCT.md) para mantener un ambiente respetuoso y colaborativo.
+
+## Agradecimientos
+
+- A todos los contribuidores que han ayudado a hacer ProjectFlow mejor
+- A la comunidad de código abierto por su inspiración y herramientas

@@ -5,10 +5,12 @@ const prisma = new PrismaClient();
 async function createUser() {
   // Datos del usuario que queremos crear
   const userData = {
-    name: 'Matias',
-    email: 'matiasprogramador2@gmail.com',
-    password: 'micontraseña123' // La contraseña que queremos usar
+    name: 'Test Bcrypt User',
+    email: 'testbcrypt@example.com',
+    password: 'testpassword123' // La contraseña que queremos usar
   };
+  
+  console.log(`Intentando crear/actualizar usuario: ${userData.email} con contraseña: ${userData.password}`);
   
   // Crear hash de la contraseña con bcrypt
   const salt = await bcrypt.genSalt(10);

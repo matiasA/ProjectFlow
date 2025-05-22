@@ -4,48 +4,113 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppLayout from "./components/AppLayout";
-import { PlusIcon, MessageSquareIcon, FolderIcon } from "lucide-react";
+import { PlusIcon, MessageSquareIcon, FolderIcon, ExternalLinkIcon, Loader2Icon } from "lucide-react"; // Added ExternalLinkIcon, Loader2Icon
 import Link from "next/link";
 
-interface Project {
+interface Project { // This is still used for the "Proyectos recientes" section
   id: string;
   name: string;
   description: string | null;
   createdAt: string;
   updatedAt: string;
-  _count: {
+  _count?: { // Made optional as it might not be present in all project fetches
     folders: number;
     chats: number;
   }
 }
 
+interface Stats {
+  totalProjects: number;
+  totalChats: number;
+  totalMessages: number;
+}
+
+interface RecentChat {
+  id: string;
+  name: string;
+  updatedAt: string;
+  project: { name: string } | null; // Project can be null if not associated
+  folder: { name: string } | null; // Folder can be null
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  
+  // State for existing projects section
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true); // Renamed isLoading
+
+  // New states for stats and recent chats
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [errorStats, setErrorStats] = useState<string | null>(null);
+
+  const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
+  const [isLoadingRecentChats, setIsLoadingRecentChats] = useState(true);
+  const [errorRecentChats, setErrorRecentChats] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchDashboardData = async () => {
       if (session?.user) {
+        // Fetch Projects (existing logic, adapted)
+        setIsLoadingProjects(true);
         try {
-          setIsLoading(true);
-          const response = await fetch('/api/projects');
-          
-          if (response.ok) {
-            const data = await response.json();
-            setProjects(data);
+          const projectsResponse = await fetch('/api/projects');
+          if (projectsResponse.ok) {
+            const projectsData = await projectsResponse.json();
+            setProjects(projectsData);
+          } else {
+            console.error("Error al cargar proyectos:", projectsResponse.statusText);
+            // Optionally set an error state for projects if needed
           }
         } catch (error) {
           console.error("Error al cargar proyectos:", error);
+           // Optionally set an error state for projects
         } finally {
-          setIsLoading(false);
+          setIsLoadingProjects(false);
+        }
+
+        // Fetch Stats
+        setIsLoadingStats(true);
+        setErrorStats(null);
+        try {
+          const statsResponse = await fetch('/api/stats');
+          if (!statsResponse.ok) {
+            const errorData = await statsResponse.json();
+            throw new Error(errorData.error || "Error al cargar estadísticas");
+          }
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        } catch (error: any) {
+          console.error("Error al cargar estadísticas:", error);
+          setErrorStats(error.message);
+        } finally {
+          setIsLoadingStats(false);
+        }
+
+        // Fetch Recent Chats
+        setIsLoadingRecentChats(true);
+        setErrorRecentChats(null);
+        try {
+          const recentChatsResponse = await fetch('/api/chats/recent');
+          if (!recentChatsResponse.ok) {
+            const errorData = await recentChatsResponse.json();
+            throw new Error(errorData.error || "Error al cargar chats recientes");
+          }
+          const recentChatsData = await recentChatsResponse.json();
+          setRecentChats(recentChatsData);
+        } catch (error: any) {
+          console.error("Error al cargar chats recientes:", error);
+          setErrorRecentChats(error.message);
+        } finally {
+          setIsLoadingRecentChats(false);
         }
       }
     };
     
     if (status === "authenticated") {
-      fetchProjects();
+      fetchDashboardData();
     }
   }, [session, status]);
 
@@ -93,7 +158,10 @@ export default function Home() {
             </div>
             <div>
               <h2 className="font-semibold text-lg">Total de chats</h2>
-              <p className="text-3xl font-bold">12</p>
+              {isLoadingStats && <Loader2Icon className="h-6 w-6 animate-spin text-blue-500" />}
+              {errorStats && <p className="text-xs text-red-500">Error</p>}
+              {!isLoadingStats && !errorStats && stats && <p className="text-3xl font-bold">{stats.totalChats}</p>}
+              {!isLoadingStats && !stats && !errorStats && <p className="text-3xl font-bold">0</p>}
             </div>
           </div>
 
@@ -103,7 +171,10 @@ export default function Home() {
             </div>
             <div>
               <h2 className="font-semibold text-lg">Total de proyectos</h2>
-              <p className="text-3xl font-bold">{projects.length}</p>
+              {isLoadingStats && <Loader2Icon className="h-6 w-6 animate-spin text-green-500" />}
+              {errorStats && <p className="text-xs text-red-500">Error</p>}
+              {!isLoadingStats && !errorStats && stats && <p className="text-3xl font-bold">{stats.totalProjects}</p>}
+              {!isLoadingStats && !stats && !errorStats && <p className="text-3xl font-bold">0</p>}
             </div>
           </div>
 
@@ -113,23 +184,27 @@ export default function Home() {
             </div>
             <div>
               <h2 className="font-semibold text-lg">Mensajes totales</h2>
-              <p className="text-3xl font-bold">256</p>
+              {isLoadingStats && <Loader2Icon className="h-6 w-6 animate-spin text-purple-500" />}
+              {errorStats && <p className="text-xs text-red-500">Error</p>}
+              {!isLoadingStats && !errorStats && stats && <p className="text-3xl font-bold">{stats.totalMessages}</p>}
+              {!isLoadingStats && !stats && !errorStats && <p className="text-3xl font-bold">0</p>}
             </div>
           </div>
         </div>
 
+        {/* Proyectos section - uses isLoadingProjects */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Proyectos recientes</h2>
+            <h2 className="text-xl font-semibold">Proyectos</h2> {/* Changed title slightly */}
             <Link href="/projects/new" className="text-blue-600 hover:text-blue-800 flex items-center">
               <PlusIcon className="h-4 w-4 mr-1" />
               <span>Nuevo proyecto</span>
             </Link>
           </div>
 
-          {isLoading ? (
+          {isLoadingProjects ? (
             <div className="flex justify-center py-8">
-              <div className="h-8 w-8 bg-blue-600 rounded-full animate-bounce"></div>
+              <Loader2Icon className="h-8 w-8 animate-spin text-blue-600" />
             </div>
           ) : projects.length === 0 ? (
             <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
@@ -168,33 +243,52 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg divide-y">
-            <div className="p-4 hover:bg-gray-50 cursor-pointer">
-              <div className="flex justify-between mb-1">
-                <h3 className="font-medium">Investigación sobre IA generativa</h3>
-                <span className="text-xs text-gray-500">Hace 30 min</span>
+            {isLoadingRecentChats && (
+              <div className="flex justify-center py-8">
+                <Loader2Icon className="h-8 w-8 animate-spin text-blue-600" />
               </div>
-              <p className="text-gray-500 text-sm truncate">Última respuesta: Los modelos de IA generativa como GPT-4 funcionan mediante...</p>
-              <div className="text-xs text-gray-400 mt-1">Proyecto 1 · Carpeta General</div>
-            </div>
-
-            <div className="p-4 hover:bg-gray-50 cursor-pointer">
-              <div className="flex justify-between mb-1">
-                <h3 className="font-medium">Análisis de mercado</h3>
-                <span className="text-xs text-gray-500">Hace 2 horas</span>
+            )}
+            {errorRecentChats && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+                <h3 className="text-lg font-medium mb-2 text-red-700">Error al cargar chats recientes</h3>
+                <p className="text-red-500 mb-4">{errorRecentChats}</p>
+                {/* Consider adding a retry button here */}
               </div>
-              <p className="text-gray-500 text-sm truncate">Última respuesta: Según los datos proporcionados, el mercado de IA crecerá...</p>
-              <div className="text-xs text-gray-400 mt-1">Proyecto 2</div>
-            </div>
-
-            <div className="p-4 hover:bg-gray-50 cursor-pointer">
-              <div className="flex justify-between mb-1">
-                <h3 className="font-medium">Ideas para nuevo producto</h3>
-                <span className="text-xs text-gray-500">Ayer</span>
+            )}
+            {!isLoadingRecentChats && !errorRecentChats && recentChats.length === 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                <h3 className="text-lg font-medium mb-2">No hay chats recientes</h3>
+                <p className="text-gray-500 mb-4">Comienza una nueva conversación.</p>
+                <Link 
+                  href="/new-chat-form" // Updated link to new chat form page
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  <span>Crear chat</span>
+                </Link>
               </div>
-              <p className="text-gray-500 text-sm truncate">Última respuesta: Entre las características que podrían diferenciar su producto están...</p>
-              <div className="text-xs text-gray-400 mt-1">Proyecto 1 · Carpeta Ideas</div>
-            </div>
+            )}
+            {!isLoadingRecentChats && !errorRecentChats && recentChats.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200">
+                {recentChats.map(chat => (
+                  <Link key={chat.id} href={`/chat/${chat.id}`} className="block p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-medium text-blue-600 hover:underline flex items-center">
+                        {chat.name}
+                        <ExternalLinkIcon className="h-3 w-3 ml-1.5 text-gray-400" />
+                      </h3>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(chat.updatedAt)}</span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {chat.project?.name ? `Proyecto: ${chat.project.name}` : 'Sin Proyecto Asignado'}
+                      {chat.folder?.name && ` · Carpeta: ${chat.folder.name}`}
+                    </div>
+                    {/* Placeholder for last message snippet if available in future */}
+                    {/* <p className="text-gray-500 text-sm truncate mt-1">Última respuesta: ...</p> */}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

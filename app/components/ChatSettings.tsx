@@ -8,19 +8,34 @@ interface ChatSettingsProps {
   onClose: () => void;
   chatId: string;
   initialProvider?: string;
+  initialModel?: string;
+  initialTemperature?: number;
   onSave: (settings: { provider: string; model: string; temperature: number }) => void;
+  isSaving?: boolean; // To disable save button during save operation
+  saveError?: string | null; // To display save error in modal
 }
 
 export default function ChatSettings({
   isOpen,
   onClose,
   chatId,
-  initialProvider = "lmstudio",
+  initialProvider = "openai", // Default if not provided
+  initialModel = "gpt-3.5-turbo", // Default if not provided
+  initialTemperature = 0.7, // Default if not provided
   onSave,
+  isSaving = false,
+  saveError = null,
 }: ChatSettingsProps) {
   const [provider, setProvider] = useState(initialProvider);
-  const [model, setModel] = useState("local-model");
-  const [temperature, setTemperature] = useState(0.7);
+  const [model, setModel] = useState(initialModel);
+  const [temperature, setTemperature] = useState(initialTemperature);
+
+  // Update local state if initial props change (e.g., chat loaded after modal is already mounted but hidden)
+  useEffect(() => {
+    setProvider(initialProvider);
+    setModel(initialModel);
+    setTemperature(initialTemperature);
+  }, [initialProvider, initialModel, initialTemperature, isOpen]); // Re-run if isOpen changes to reset form
 
   // Modelos disponibles por proveedor
   const models = {
@@ -47,17 +62,23 @@ export default function ChatSettings({
   const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProvider = e.target.value;
     setProvider(newProvider);
-    // Establecer el modelo predeterminado para el proveedor seleccionado
-    setModel(models[newProvider as keyof typeof models][0].id);
+    // Set default model for the selected provider, ensuring models[newProvider] exists
+    const providerModels = models[newProvider as keyof typeof models];
+    if (providerModels && providerModels.length > 0) {
+      setModel(providerModels[0].id);
+    } else {
+      setModel(""); // Or some other default/error state
+    }
   };
 
   const handleSave = () => {
+    if (isSaving) return;
     onSave({
       provider,
       model,
       temperature,
     });
-    onClose();
+    // onClose(); // Closing will be handled by parent upon successful save or explicitly
   };
 
   if (!isOpen) return null;
@@ -135,18 +156,28 @@ export default function ChatSettings({
             </div>
           )}
 
+          {saveError && (
+            <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md mt-2">
+              Error al guardar: {saveError}
+            </p>
+          )}
+
           <div className="flex justify-end space-x-2 pt-4">
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              disabled={isSaving}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
+              type="button"
               onClick={handleSave}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              disabled={isSaving || !model} // Disable if no model selected (e.g. provider change led to empty model list)
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              Guardar
+              {isSaving ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </div>

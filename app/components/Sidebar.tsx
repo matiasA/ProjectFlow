@@ -45,8 +45,13 @@ export default function Sidebar() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true); // Renamed from isLoading
   
+  const [loadingFoldersForProject, setLoadingFoldersForProject] = useState<Record<string, boolean>>({});
+  const [loadingChatsForFolder, setLoadingChatsForFolder] = useState<Record<string, boolean>>({});
+  const [errorFolders, setErrorFolders] = useState<string | null>(null);
+  const [errorChats, setErrorChats] = useState<string | null>(null);
+
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
@@ -55,7 +60,7 @@ export default function Sidebar() {
     const fetchProjects = async () => {
       if (session?.user) {
         try {
-          setIsLoading(true);
+          setIsLoadingProjects(true); // Use renamed state
           const response = await fetch('/api/projects');
           
           if (response.ok) {
@@ -63,17 +68,19 @@ export default function Sidebar() {
             setProjects(data);
             
             // Expandir el primer proyecto por defecto si existe
-            if (data.length > 0) {
+            if (data.length > 0 && data[0].id) { // ensure data[0].id exists
               setExpandedProjects(prev => ({
                 ...prev,
                 [data[0].id]: true
               }));
+              // Automatically load folders for the first expanded project
+              // This will be handled by toggleProject or a direct call if needed
             }
           }
         } catch (error) {
           console.error("Error al cargar proyectos:", error);
         } finally {
-          setIsLoading(false);
+          setIsLoadingProjects(false); // Use renamed state
         }
       }
     };
@@ -81,42 +88,87 @@ export default function Sidebar() {
     fetchProjects();
   }, [session]);
 
-  // Cargar carpetas y chats al expandir un proyecto
-  const loadFoldersAndChats = async (projectId: string) => {
+  // Cargar carpetas para un proyecto específico
+  const loadFolders = async (projectId: string) => {
+    if (folders.some(folder => folder.projectId === projectId) && !errorFolders) { // Basic check to avoid re-fetching if already loaded and no error
+      // Folders for this project might already be loaded.
+      // Potentially add a more robust check or a forced refresh mechanism if needed.
+      return;
+    }
+    
+    setLoadingFoldersForProject(prev => ({ ...prev, [projectId]: true }));
+    setErrorFolders(null);
     try {
-      // En una implementación real, cargarías las carpetas y chats desde la API
-      // Por ahora, usamos datos simulados
-      setFolders([
-        { id: "1", name: "General", projectId },
-        { id: "2", name: "Ideas", projectId }
+      const response = await fetch(`/api/projects/${projectId}/folders`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error al cargar carpetas: ${response.status}`);
+      }
+      const data: Folder[] = await response.json();
+      setFolders(prevFolders => [
+        ...prevFolders.filter(f => f.projectId !== projectId), // Remove existing folders for this project before adding new ones
+        ...data
       ]);
-      
-      setChats([
-        { id: "1", name: "Chat 1", projectId, folderId: "1" },
-        { id: "2", name: "Chat 2", projectId, folderId: "1" },
-        { id: "3", name: "Chat 3", projectId, folderId: "2" }
+    } catch (error: any) {
+      console.error("Error al cargar carpetas:", error);
+      setErrorFolders(error.message);
+    } finally {
+      setLoadingFoldersForProject(prev => ({ ...prev, [projectId]: false }));
+    }
+  };
+  
+  // Cargar chats para una carpeta específica
+  const loadChats = async (folderId: string) => {
+    if (chats.some(chat => chat.folderId === folderId) && !errorChats) { // Basic check
+      return;
+    }
+
+    setLoadingChatsForFolder(prev => ({ ...prev, [folderId]: true }));
+    setErrorChats(null);
+    try {
+      const response = await fetch(`/api/folders/${folderId}/chats`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error al cargar chats: ${response.status}`);
+      }
+      const data: Chat[] = await response.json();
+      setChats(prevChats => [
+        ...prevChats.filter(c => c.folderId !== folderId), // Remove existing chats for this folder
+        ...data.map(chat => ({ ...chat, folderId })) // Ensure folderId is set
       ]);
-    } catch (error) {
-      console.error("Error al cargar carpetas y chats:", error);
+    } catch (error: any) {
+      console.error("Error al cargar chats:", error);
+      setErrorChats(error.message);
+    } finally {
+      setLoadingChatsForFolder(prev => ({ ...prev, [folderId]: false }));
     }
   };
 
   const toggleProject = (projectId: string) => {
-    // Cargar carpetas y chats si el proyecto se está expandiendo
-    if (!expandedProjects[projectId]) {
-      loadFoldersAndChats(projectId);
+    const isCurrentlyExpanded = !!expandedProjects[projectId];
+    if (!isCurrentlyExpanded) {
+      // Load folders only if they haven't been loaded for this project yet, or if there was a previous error
+      if (!folders.some(f => f.projectId === projectId) || errorFolders) {
+        loadFolders(projectId);
+      }
     }
-    
     setExpandedProjects(prev => ({
       ...prev,
-      [projectId]: !prev[projectId]
+      [projectId]: !isCurrentlyExpanded
     }));
   };
 
   const toggleFolder = (folderId: string) => {
+    const isCurrentlyExpanded = !!expandedFolders[folderId];
+    if (!isCurrentlyExpanded) {
+      // Load chats only if they haven't been loaded for this folder yet, or if there was a previous error
+      if (!chats.some(c => c.folderId === folderId) || errorChats) {
+        loadChats(folderId);
+      }
+    }
     setExpandedFolders(prev => ({
       ...prev,
-      [folderId]: !prev[folderId]
+      [folderId]: !isCurrentlyExpanded
     }));
   };
 
@@ -125,7 +177,20 @@ export default function Sidebar() {
   };
 
   const createNewChat = () => {
-    router.push("/chat/new");
+    router.push("/new-chat-form"); // Updated route
+  };
+
+  const handleCreateNewFolder = (projectId: string) => {
+    // Placeholder for now. In a real scenario, this would open a modal or navigate to a form.
+    console.log(`Solicitud para crear nueva carpeta en proyecto: ${projectId}`);
+    // Example: prompt for folder name
+    const folderName = prompt("Ingrese el nombre de la nueva carpeta:");
+    if (folderName && folderName.trim() !== "") {
+      // Here you would call the API to create the folder
+      console.log(`Creando carpeta "${folderName}" en proyecto ${projectId}`);
+      // After creation, you might want to refresh the folder list for this project:
+      // loadFolders(projectId); 
+    }
   };
 
   if (!session) {
@@ -159,12 +224,12 @@ export default function Sidebar() {
 
         <div className="mb-2 flex items-center justify-between">
           <h2 className="font-medium">Proyectos</h2>
-          <button onClick={createNewProject} className="p-1 hover:bg-gray-200 rounded-full">
+          <button onClick={createNewProject} className="p-1 hover:bg-gray-200 rounded-full" title="Crear nuevo proyecto">
             <PlusIcon className="w-4 h-4" />
           </button>
         </div>
 
-        {isLoading ? (
+        {isLoadingProjects ? ( // Use renamed state
           <div className="flex justify-center py-4">
             <div className="h-5 w-5 bg-blue-600 rounded-full animate-bounce"></div>
           </div>
@@ -193,7 +258,19 @@ export default function Sidebar() {
               </div>
               
               {expandedProjects[project.id] && (
-                <div className="pl-6 mt-1">
+                <div className="pl-4 mt-1 space-y-1">
+                  <button
+                    onClick={() => handleCreateNewFolder(project.id)}
+                    className="flex items-center w-full text-xs p-1.5 rounded-md hover:bg-gray-200 text-gray-600"
+                  >
+                    <PlusIcon className="w-3 h-3 mr-2" />
+                    Nueva Carpeta
+                  </button>
+                  {loadingFoldersForProject[project.id] && <p className="text-xs text-gray-500 pl-2">Cargando carpetas...</p>}
+                  {errorFolders && <p className="text-xs text-red-500 pl-2">Error al cargar carpetas.</p>}
+                  {!loadingFoldersForProject[project.id] && !errorFolders && folders.filter(folder => folder.projectId === project.id).length === 0 && (
+                    <p className="text-xs text-gray-400 pl-2 pt-1">No hay carpetas en este proyecto.</p>
+                  )}
                   {folders
                     .filter(folder => folder.projectId === project.id)
                     .map(folder => (
@@ -211,6 +288,11 @@ export default function Sidebar() {
 
                         {expandedFolders[folder.id] && (
                           <div className="pl-5 mt-1">
+                            {loadingChatsForFolder[folder.id] && <p className="text-xs text-gray-500">Cargando chats...</p>}
+                            {errorChats && <p className="text-xs text-red-500">Error al cargar chats.</p>}
+                            {!loadingChatsForFolder[folder.id] && !errorChats && chats.filter(chat => chat.folderId === folder.id).length === 0 && (
+                               <p className="text-xs text-gray-400 pt-1">No hay chats en esta carpeta.</p>
+                            )}
                             {chats
                               .filter(chat => chat.folderId === folder.id)
                               .map(chat => (
